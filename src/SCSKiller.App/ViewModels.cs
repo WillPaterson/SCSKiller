@@ -213,8 +213,7 @@ static class Icons
     {
         if (failed.Contains(exePath)) return null;
         if (cache.TryGetValue(exePath, out var entry)) return entry.Image;   // no disk look per row rebuild: a busy disk stalls the UI thread
-        if (!File.Exists(exePath)) return null;
-        var bmp = new BitmapImage();
+        var bmp = new BitmapImage();   // the exe's existence is looked up off the UI thread (LoadAsync): a game on a drive a scan is reading stalled it here
         bmp.ImageFailed += (_, _) => Fail(exePath);   // a decode failure
         cache[exePath] = (bmp, null);
         _ = LoadAsync(exePath, bmp);
@@ -223,7 +222,8 @@ static class Icons
 
     static async Task LoadAsync(string path, BitmapImage bmp)
     {
-        var logo = await Task.Run(() => PackageLogo(path));
+        var (exists, logo) = await Task.Run(() => (File.Exists(path), PackageLogo(path)));
+        if (!exists) { Fail(path); return; }   // the row shows its tile
         for (var attempt = 1; ; attempt++)
         {
             IRandomAccessStream? stream = null;
