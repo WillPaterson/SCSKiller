@@ -52,7 +52,7 @@ public sealed partial class SteamSource(string? steamRoot = null) : IGameSource,
                         }
                         var exe = Known?.GetValueOrDefault($"steam:{id}") is { Version: { } was } k && was == build && k.InstallDir.Equals(install, StringComparison.OrdinalIgnoreCase)
                             && File.Exists(k.ExePath) && !GameFiles.NotTheGameExe(install, k.ExePath) ? k.ExePath
-                            : GameFiles.FindExe(install, steamLaunch: LaunchExe(Apps(AppInfoPath(root), new HashSet<uint> { id })?.GetValueOrDefault(id), Values(text, "BetaKey").LastOrDefault()));   // MountedConfig's, after UserConfig's
+                            : GameFiles.FindExeWithSteamLaunch(install, () => LaunchExe(Apps(AppInfoPath(root), new HashSet<uint> { id })?.GetValueOrDefault(id), Values(text, "BetaKey").LastOrDefault()));   // MountedConfig's, after UserConfig's
                         if (exe == null)
                         {
                             noExe.Add((id, V("name") ?? dir, install));
