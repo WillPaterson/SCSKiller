@@ -1,0 +1,5 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/proxy",
+    "cmake.useCMakePresets": "always",
+    "dotnet.defaultSolution": "SCSKiller.slnx"
+}
