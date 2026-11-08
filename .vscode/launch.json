@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "name": "C#: SCSKiller.App",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}\\src\\SCSKiller.App\\SCSKiller.App.csproj",
+            "launchConfigurationId": "TargetFramework=;SCSKiller.App"
+        }
+    ]
+}
