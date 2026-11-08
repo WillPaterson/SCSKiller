@@ -26,7 +26,13 @@ public static partial class GameFiles
     /// Steam's launch target (<see cref="SteamSource.LaunchExe"/>), unless it is named like a launcher. A launcher among the others is replaced by
     /// the game it starts (<see cref="LaunchedExe"/>). Exes in a patcher's or installer's copy of the game (<see cref="Staging"/>) are never
     /// picked, nor are those an Xbox app game's config marks as not the game (<see cref="XboxSource.NotTheGame"/>).</summary>
-    public static string? FindExe(string installDir, string? launcherExe = null, string? steamLaunch = null)
+    public static string? FindExe(string installDir, string? launcherExe = null, string? steamLaunch = null) =>
+        FindExeCore(installDir, launcherExe, steamLaunch == null ? null : () => steamLaunch);
+
+    internal static string? FindExeWithSteamLaunch(string installDir, Func<string?> steamLaunch) =>
+        FindExeCore(installDir, null, steamLaunch);
+
+    static string? FindExeCore(string installDir, string? launcherExe, Func<string?>? steamLaunch)
     {
         if (!Directory.Exists(installDir)) return null;
         if (ShippingExe(installDir, launcherExe == null ? null : Path.GetFileName(Under("", launcherExe))) is { } shipping) return shipping;
@@ -56,8 +62,8 @@ public static partial class GameFiles
         if (guess == null) return null;
         // a launch target can be a launcher: RDR2's in the root, Phantom Blade Zero's stub steam\PBZ.exe in an Unreal install. Not through
         // LaunchedExe: an engine in a DLL leaves the game's exe importing no graphics API, and a larger tool may import one
-        if (steamLaunch != null && Nested(guess) && !UnrealFolders(installDir).Any()
-            && Path.GetFullPath(Find(installDir, steamLaunch.Trim('\\', '/'))) is var target && exes.FirstOrDefault(f => f.FullName.Equals(target, StringComparison.OrdinalIgnoreCase)) is { } launched
+        if (steamLaunch != null && Nested(guess) && steamLaunch() is { } launch && !UnrealFolders(installDir).Any()
+            && Path.GetFullPath(Find(installDir, launch.Trim('\\', '/'))) is var target && exes.FirstOrDefault(f => f.FullName.Equals(target, StringComparison.OrdinalIgnoreCase)) is { } launched
             && !XboxSource.LauncherOrUtility(launched.Name))
             return launched.FullName;
         return NotPlus(LaunchedExe(installDir, guess, exes), exes);
