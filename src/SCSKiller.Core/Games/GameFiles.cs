@@ -1068,21 +1068,35 @@ public static partial class GameFiles
             try { return Directory.GetDirectories(dir); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return []; }
         }
-        foreach (var lib in libraries.Select(Path.TrimEndingDirectorySeparator).Distinct(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal))
-            foreach (var id in AntiCheatIds.Concat(GameVerdicts.Current.AntiCheatIds).Distinct(StringComparer.OrdinalIgnoreCase).Where(i => i.StartsWith("steam:", StringComparison.Ordinal)))
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var manifests = AntiCheatIds.Concat(GameVerdicts.Current.AntiCheatIds).Where(i => i.StartsWith("steam:", StringComparison.Ordinal))
+            .Select(i => $"appmanifest_{i["steam:".Length..]}.acf").ToHashSet(comparer);
+        foreach (var lib in libraries.Select(Path.TrimEndingDirectorySeparator).Distinct(comparer))
+        {
+            var apps = Path.Combine(lib, "steamapps");
+            var common = Path.Combine(apps, "common");
+            void UnreadLibrary(Exception e)
             {
-                var common = Path.Combine(lib, "steamapps", "common");
+                if (Holds(common) || Holds(FinalPath(common)) || Folders(common).Any(f => Holds(FinalPath(f)))) unread ??= e;
+            }
+            string[] found;
+            try { found = Directory.EnumerateFileSystemEntries(apps, "appmanifest_*.acf").Where(p => manifests.Contains(Path.GetFileName(p))).ToArray(); }
+            catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { continue; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { UnreadLibrary(e); continue; }
+            foreach (var manifest in found)
+            {
                 string? dir;
-                try { dir = SteamSource.Values(File.ReadAllText(Path.Combine(lib, "steamapps", $"appmanifest_{id["steam:".Length..]}.acf")), "installdir").FirstOrDefault(); }
+                try { dir = SteamSource.Values(File.ReadAllText(manifest), "installdir").FirstOrDefault(); }
                 catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { continue; }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
-                    if (Holds(common) || Holds(FinalPath(common)) || Folders(common).Any(f => Holds(FinalPath(f)))) unread ??= e;
+                    UnreadLibrary(e);
                     continue;
                 }
                 var root = string.IsNullOrEmpty(dir) ? common : Path.Combine(common, dir);
                 if (Holds(root) || Holds(FinalPath(root))) return true;
             }
+        }
         if (unread != null) unreadable(unread);
         return unread != null;
     }
